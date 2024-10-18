@@ -25,8 +25,8 @@ Parameters:
 Mappings:
   RegionMap:
     eu-north-1:
-      az1: eun1-az1
-      az2: eun1-az2
+      az1: eu-north-1a
+      az2: eu-north-1b
 
 # VPC
 Resources:
