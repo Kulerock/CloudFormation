@@ -30,26 +30,26 @@ Mappings:
 
 # VPC
 Resources:
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      Tags:
-        - Key: Name
-          Value: MyVPC
+  # VPC:
+  #   Type: AWS::EC2::VPC
+  #   Properties:
+  #     CidrBlock: 10.0.0.0/16
+  #     Tags:
+  #       - Key: Name
+  #         Value: MyVPC
 
   # Subnets
-  AvailabilityZones:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VpcId
-      AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
+  # AvailabilityZones:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VpcId
+  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
 
-  AvailabilityZones2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VpcId
-      AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
+  # AvailabilityZones2:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VpcId
+  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
 
   # Security Group & dynamic ports
   SecurityGroup:
@@ -104,8 +104,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !Ref AvailabilityZones
-        - !Ref AvailabilityZones2
+        - subnet-01c0d6e07209094ca
+        - subnet-03282908de6da2cc6
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: "$Latest"
@@ -123,8 +123,8 @@ Resources:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
       AvailabilityZones:
-        - !Ref AvailabilityZones
-        - !Ref AvailabilityZones2
+        - subnet-01c0d6e07209094ca
+        - subnet-03282908de6da2cc6
       Listeners:
         - LoadBalancerPort: 80
           InstancePort: 80
