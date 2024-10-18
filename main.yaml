@@ -76,18 +76,20 @@ Resources:
           ToPort: 0
           CidrIp: 0.0.0.0/0
   # Launch Template
-  LaunchTemplate:
+    LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateName: WebServer-Highly-Available
       LaunchTemplateData:
         ImageId: ami-097c5c21a18dc59ea
         InstanceType: !Ref InstanceType
-        KeyName: deployer-key
+        KeyName: !Ref KeyPair
         NetworkInterfaces:
           - AssociatePublicIpAddress: true
-            GroupSet:
-              - !Ref SecurityGroup
+            DeviceIndex: 0
+            SubnetId: !FindInMap [RegionMap, !Ref AWS::Region, az1]
+        SecurityGroups:
+          - !Ref SecurityGroup
         UserData:
           Fn::Base64: !Sub |
             #!/bin/bash
@@ -99,16 +101,15 @@ Resources:
             chkconfig httpd on
 
   # Auto Scaling Group
-
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - subnet-01c0d6e07209094ca
-        - subnet-03282908de6da2cc6
+        - !FindInMap [RegionMap, !Ref AWS::Region, az1]
+        - !FindInMap [RegionMap, !Ref AWS::Region, az2]
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
-        Version: "$Latest"
+        Version: "1"  
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1
@@ -117,6 +118,7 @@ Resources:
           Value: WebServer-in-ASG
         - Key: Owner
           Value: Kate
+
 
   # Load Balancer
   LoadBalancer:
