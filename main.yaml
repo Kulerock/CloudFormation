@@ -3,10 +3,6 @@ Description: CloudFormation template to deploy VPC and related resources
 
 # VPC & Availability Zones
 Parameters:
-  Region:
-    Type: String
-    Default: eu-north-1
-    Description: Please enter the AWS region
   InstanceType:
     Type: String
     Default: t3.micro
@@ -14,9 +10,6 @@ Parameters:
   VpcId:
     Type: String
     Default: vpc-04638fa44d53e81de
-  AllowPorts:
-    Type: CommaDelimitedList
-    Default: "80,443"
 
 # Mapping
 Mappings:
