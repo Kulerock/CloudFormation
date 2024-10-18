@@ -14,9 +14,6 @@ Parameters:
   VpcId:
     Type: String
     Default: vpc-04638fa44d53e81de
-  KeyPair:
-    Type: String
-    Default: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIV98DkEK9IyCG9AqRBvhguNKKniqouWNfk2S6keGsPY kulerock@ubuntu"
   AllowPorts:
     Type: CommaDelimitedList
     Default: "80,443"
@@ -30,21 +27,6 @@ Mappings:
 
 # Resources
 Resources:
-  # Subnets
-  # Subnet1:
-  #   Type: AWS::EC2::Subnet
-  #   Properties:
-  #     VpcId: !Ref VpcId
-  #     CidrBlock: 172.31.1.0/24
-  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
-
-  # Subnet2:
-  #   Type: AWS::EC2::Subnet
-  #   Properties:
-  #     VpcId: !Ref VpcId
-  #     CidrBlock: 172.31.2.0/24
-  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az2]
-
   # Security Group & dynamic ports
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
