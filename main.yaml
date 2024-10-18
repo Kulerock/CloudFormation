@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: CloudFormation template to deploy VPC and related resources
 
 # VPC & Availability Zones
@@ -21,6 +21,13 @@ Parameters:
     Type: CommaDelimitedList
     Default: "80,443"
 
+#Mapping
+Mappings:
+  RegionMap:
+    eu-north-1:
+      az1: eun1-az1
+      az2: eun1-az2
+
 # VPC
 Resources:
   VPC:
@@ -31,20 +38,20 @@ Resources:
         - Key: Name
           Value: MyVPC
 
-# Subnets
+  # Subnets
   AvailabilityZones:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VpcId
-      AvailabilityZone: !Select [0, !GetAZs !Ref AWS::Region]
+      AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
 
   AvailabilityZones2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VpcId
-      AvailabilityZone: !Select [1, !GetAZs !Ref AWS::Region]
+      AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
 
-# Security Group & dynamic ports
+  # Security Group & dynamic ports
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -68,7 +75,7 @@ Resources:
           FromPort: 0
           ToPort: 0
           CidrIp: 0.0.0.0/0
-# Launch Template
+  # Launch Template
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -91,17 +98,17 @@ Resources:
             service httpd start
             chkconfig httpd on
 
-# Auto Scaling Group
+  # Auto Scaling Group
 
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      VPCZoneIdentifier: 
+      VPCZoneIdentifier:
         - !Ref AvailabilityZones
         - !Ref AvailabilityZones2
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
-        Version: '$Latest'
+        Version: "$Latest"
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1
@@ -111,7 +118,7 @@ Resources:
         - Key: Owner
           Value: Kate
 
-# Load Balancer
+  # Load Balancer
   LoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
