@@ -21,35 +21,29 @@ Parameters:
     Type: CommaDelimitedList
     Default: "80,443"
 
-#Mapping
+# Mapping
 Mappings:
   RegionMap:
     eu-north-1:
       az1: eu-north-1a
       az2: eu-north-1b
 
-# VPC
+# Resources
 Resources:
-  # VPC:
-  #   Type: AWS::EC2::VPC
-  #   Properties:
-  #     CidrBlock: 10.0.0.0/16
-  #     Tags:
-  #       - Key: Name
-  #         Value: MyVPC
-
   # Subnets
-  # AvailabilityZones:
+  # Subnet1:
   #   Type: AWS::EC2::Subnet
   #   Properties:
   #     VpcId: !Ref VpcId
+  #     CidrBlock: 172.31.1.0/24
   #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
 
-  # AvailabilityZones2:
+  # Subnet2:
   #   Type: AWS::EC2::Subnet
   #   Properties:
   #     VpcId: !Ref VpcId
-  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az1]
+  #     CidrBlock: 172.31.2.0/24
+  #     AvailabilityZone: !FindInMap [RegionMap, !Ref AWS::Region, az2]
 
   # Security Group & dynamic ports
   SecurityGroup:
@@ -72,24 +66,21 @@ Resources:
           CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: -1
-          FromPort: 0
-          ToPort: 0
           CidrIp: 0.0.0.0/0
+
   # Launch Template
-    LaunchTemplate:
+  LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: WebServer-Highly-Available
+      LaunchTemplateName: WebServer-Highly-Available-1
       LaunchTemplateData:
         ImageId: ami-097c5c21a18dc59ea
         InstanceType: !Ref InstanceType
-        KeyName: !Ref KeyPair
         NetworkInterfaces:
-          - AssociatePublicIpAddress: true
-            DeviceIndex: 0
-            SubnetId: !FindInMap [RegionMap, !Ref AWS::Region, az1]
-        SecurityGroups:
-          - !Ref SecurityGroup
+          - DeviceIndex: 0
+            Groups:
+              - !GetAtt SecurityGroup.GroupId
+            DeleteOnTermination: true
         UserData:
           Fn::Base64: !Sub |
             #!/bin/bash
@@ -99,26 +90,26 @@ Resources:
             echo "<html><body bgcolor='green'><h2>WebServer with IP: <font color='red'>$myip</font></h2></body></html>" > /var/www/html/index.html
             service httpd start
             chkconfig httpd on
-
   # Auto Scaling Group
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !FindInMap [RegionMap, !Ref AWS::Region, az1]
-        - !FindInMap [RegionMap, !Ref AWS::Region, az2]
+        - subnet-03282908de6da2cc6
+        - subnet-01c0d6e07209094ca
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
-        Version: "1"  
+        Version: "1"
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1
       Tags:
         - Key: Name
           Value: WebServer-in-ASG
+          PropagateAtLaunch: true
         - Key: Owner
           Value: Kate
-
+          PropagateAtLaunch: true
 
   # Load Balancer
   LoadBalancer:
