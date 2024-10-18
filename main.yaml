@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to deploy VPC and related resources
+
+# VPC & Availability Zones
+Parameters:
+  Region:
+    Type: String
+    Default: eu-north-1
+    Description: Please enter the AWS region
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: Please enter the instance type
+  VpcId:
+    Type: String
+    Default: vpc-04638fa44d53e81de
+  KeyPair:
+    Type: String
+    Default: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIV98DkEK9IyCG9AqRBvhguNKKniqouWNfk2S6keGsPY kulerock@ubuntu"
+  AllowPorts:
+    Type: CommaDelimitedList
+    Default: "80,443"
+
+# VPC
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+# Subnets
+  AvailabilityZones:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      AvailabilityZone: !Select [0, !GetAZs !Ref AWS::Region]
+
+  AvailabilityZones2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      AvailabilityZone: !Select [1, !GetAZs !Ref AWS::Region]
+
+# Security Group & dynamic ports
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 433
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+# Launch Template
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: WebServer-Highly-Available
+      LaunchTemplateData:
+        ImageId: ami-097c5c21a18dc59ea
+        InstanceType: !Ref InstanceType
+        KeyName: deployer-key
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            GroupSet:
+              - !Ref SecurityGroup
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum -y update
+            yum -y install httpd
+            myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
+            echo "<html><body bgcolor='green'><h2>WebServer with IP: <font color='red'>$myip</font></h2></body></html>" > /var/www/html/index.html
+            service httpd start
+            chkconfig httpd on
+
+# Auto Scaling Group
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: 
+        - !Ref AvailabilityZones
+        - !Ref AvailabilityZones2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: '$Latest'
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      Tags:
+        - Key: Name
+          Value: WebServer-in-ASG
+        - Key: Owner
+          Value: Kate
+
+# Load Balancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      AvailabilityZones:
+        - !Ref AvailabilityZones
+        - !Ref AvailabilityZones2
+      Listeners:
+        - LoadBalancerPort: 80
+          InstancePort: 80
+          Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        Interval: 10
+        Timeout: 5
+        UnhealthyThreshold: 2
+        HealthyThreshold: 2
+      SecurityGroups:
+        - !Ref SecurityGroup
+
+# Output
+Outputs:
+  WebLoadBalancerURL:
+    Description: The URL of the web load balancer
+    Value: !GetAtt LoadBalancer.DNSName
