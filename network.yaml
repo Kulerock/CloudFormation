@@ -134,19 +134,19 @@ RouteTableForPrivateSubnetB:
 #-----------Route for Private Subnet Soute Tables using NAT--------------
 RoutesForPrivateRouteTableA:
   Type: "AWS::EC2::Route"
-  DependsOn: NatGatewayA
+  DependsOn: NATGatewayA
   Properties:
     DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref RouteTableForPrivateSubnetA
-    RouteTableId: !Ref NATGatewayA
+    GatewayId: !Ref NATGatewayA
+    RouteTableId: !Ref RouteTableForPrivateSubnetA
 
 RoutesForPrivateRouteTableB:
   Type: "AWS::EC2::Route"
-  DependsOn: NatGatewayB
+  DependsOn: NATGatewayB
   Properties:
     DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref RouteTableForPrivateSubnetB
-    RouteTableId: !Ref NATGatewayB
+    GatewayId: !Ref NATGatewayB
+    RouteTableId: !Ref RouteTableForPrivateSubnetB
 
 #-----------Associate Public Route for Public Subnets--------------
 RouteAssociationPublicA:
