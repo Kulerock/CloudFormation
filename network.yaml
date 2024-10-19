@@ -83,218 +83,218 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref VPCBlock2
 
-#----------Internet Gateway----------
-GatewayInternet:
-  Type: "AWS::EC2::InternetGateway"
-  Properties:
-    Tags:
-      - Key: Name
-        Value: !Ref Environment
+  #----------Internet Gateway----------
+  GatewayInternet:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref Environment
 
-GatewayAttachmentInternet: #Attach IGW to VPC
-  Type: "AWS::EC2::VPCGatewayAttachment"
-  Properties:
-    VpcId: !Ref VPC
-    InternetGatewayId: !Ref GatewayInternet
+  GatewayAttachmentInternet: #Attach IGW to VPC
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref GatewayInternet
 
-# ---------Public Route Tables----------
-RouteTableForPublicSubnet: # Create Empty Route Table
-  Type: "AWS::EC2::RouteTable"
-  Properties:
-    VpcId: !Ref VPC
-    Tags:
-      - Key: Name
-        Value: !Join [" ", [!Ref Environment, "PublicRouteTable"]]
+  # ---------Public Route Tables----------
+  RouteTableForPublicSubnet: # Create Empty Route Table
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join [" ", [!Ref Environment, "PublicRouteTable"]]
 
-RoutesForPublicRouteTable: # Create & Attach Routes for Route Table
-  Type: "AWS::EC2::Route"
-  DependsOn: GatewayAttachmentInternet
-  Properties:
-    DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref GatewayInternet
-    RouteTableId: !Ref RouteTableForPublicSubnet
+  RoutesForPublicRouteTable: # Create & Attach Routes for Route Table
+    Type: "AWS::EC2::Route"
+    DependsOn: GatewayAttachmentInternet
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref GatewayInternet
+      RouteTableId: !Ref RouteTableForPublicSubnet
 
-# ---------Private Route Tables----------
-RouteTableForPrivateSubnetA:
-  Type: "AWS::EC2::RouteTable"
-  Properties:
-    VpcId: !Ref VPC
-    Tags:
-      - Key: Name
-        Value: !Join [" ", [!Ref Environment, "PrivateRouteTableA"]]
+  # ---------Private Route Tables----------
+  RouteTableForPrivateSubnetA:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join [" ", [!Ref Environment, "PrivateRouteTableA"]]
 
-RouteTableForPrivateSubnetB:
-  Type: "AWS::EC2::RouteTable"
-  Properties:
-    VpcId: !Ref VPC
-    Tags:
-      - Key: Name
-        Value: !Join [" ", [!Ref Environment, "PrivateRouteTableB"]]
+  RouteTableForPrivateSubnetB:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join [" ", [!Ref Environment, "PrivateRouteTableB"]]
 
-#-----------Route for Private Subnet Soute Tables using NAT--------------
-RoutesForPrivateRouteTableA:
-  Type: "AWS::EC2::Route"
-  DependsOn: NATGatewayA
-  Properties:
-    DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref NATGatewayA
-    RouteTableId: !Ref RouteTableForPrivateSubnetA
+  #-----------Route for Private Subnet Soute Tables using NAT--------------
+  RoutesForPrivateRouteTableA:
+    Type: "AWS::EC2::Route"
+    DependsOn: NATGatewayA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref NATGatewayA
+      RouteTableId: !Ref RouteTableForPrivateSubnetA
 
-RoutesForPrivateRouteTableB:
-  Type: "AWS::EC2::Route"
-  DependsOn: NATGatewayB
-  Properties:
-    DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref NATGatewayB
-    RouteTableId: !Ref RouteTableForPrivateSubnetB
+  RoutesForPrivateRouteTableB:
+    Type: "AWS::EC2::Route"
+    DependsOn: NATGatewayB
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref NATGatewayB
+      RouteTableId: !Ref RouteTableForPrivateSubnetB
 
-#-----------Associate Public Route for Public Subnets--------------
-RouteAssociationPublicA:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForPublicSubnet
-    SubnetId: !Ref PublicSubnetA
+  #-----------Associate Public Route for Public Subnets--------------
+  RouteAssociationPublicA:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForPublicSubnet
+      SubnetId: !Ref PublicSubnetA
 
-RouteAssociationPublicB:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForPublicSubnet
-    SubnetId: !Ref PublicSubnetB
+  RouteAssociationPublicB:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForPublicSubnet
+      SubnetId: !Ref PublicSubnetB
 
-#-----------Associate Private Route for Public Subnets--------------
-RouteAssociationPrivateA:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForPrivateSubnet
-    SubnetId: !Ref PrivateSubnetA
+  #-----------Associate Private Route for Public Subnets--------------
+  RouteAssociationPrivateA:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForPrivateSubnetA
+      SubnetId: !Ref PrivateSubnetA
 
-RouteAssociationPrivateB:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForPrivateSubnet
-    SubnetId: !Ref PrivateSubnetB
+  RouteAssociationPrivateB:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForPrivateSubnetB
+      SubnetId: !Ref PrivateSubnetB
 
-#---------Route Table & ROute Association for internal Databases-------
-RouteTableForDatabase:
-  Type: "AWS::EC2::RouteTable"
-  Properties:
-    VpcId: !Ref VPC
-    Tags:
-      - Key: Name
-        Value: !Join [" ", [!Ref Environment, "DataRouteTable"]]
+  #---------Route Table & ROute Association for internal Databases-------
+  RouteTableForDatabase:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join [" ", [!Ref Environment, "DataRouteTable"]]
 
-RouteAssociationDatabaseA:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForDatabase
-    SubnetId: !Ref DatabaseSubnetA
+  RouteAssociationDatabaseA:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForDatabase
+      SubnetId: !Ref DatabaseSubnetA
 
-RouteAssociationDatabaseB:
-  Type: "AWS::EC2::SubnetRouteTableAssociation"
-  Properties:
-    RouteTableId: !Ref RouteTableForDatabase
-    SubnetId: !Ref DatabaseSubnetB
+  RouteAssociationDatabaseB:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTableForDatabase
+      SubnetId: !Ref DatabaseSubnetB
 
-# -------ElasticIP for NAT Gateways-------
-EIP1:
-  Type: AWS::EC2::EIP
-  DependsOn: GatewayAttachmentInternet
-  Properties:
-    Domain: !Ref VPC
+  # -------ElasticIP for NAT Gateways-------
+  EIP1:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachmentInternet
+    Properties:
+      Domain: !Ref VPC
 
-EIP2:
-  Type: AWS::EC2::EIP
-  DependsOn: GatewayAttachmentInternet
-  Properties:
-    Domain: !Ref VPC
+  EIP2:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachmentInternet
+    Properties:
+      Domain: !Ref VPC
 
-#--------Nat Gateways----------
-NATGatewayA:
-  DependsOn: GatewayAttachmentInternet
-  Type: AWS::EC2::NatGateway
-  Properties:
-    SubnetId: !Ref PublicSubnetA
-    AllocationId: !GetAtt EIP1.AllocationId
-    Tags:
-      - Key: Name
-        Value: NAT-A
+  #--------Nat Gateways----------
+  NATGatewayA:
+    DependsOn: GatewayAttachmentInternet
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      AllocationId: !GetAtt EIP1.AllocationId
+      Tags:
+        - Key: Name
+          Value: NAT-A
 
-NATGatewayB:
-  DependsOn: GatewayAttachmentInternet
-  Type: AWS::EC2::NatGateway
-  Properties:
-    SubnetId: !Ref PublicSubnetB
-    AllocationId: !GetAtt EIP2.AllocationId
-    Tags:
-      - Key: Name
-        Value: NAT-B
+  NATGatewayB:
+    DependsOn: GatewayAttachmentInternet
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      AllocationId: !GetAtt EIP2.AllocationId
+      Tags:
+        - Key: Name
+          Value: NAT-B
 
-#-------All Subnets-----
-PublicSubnetA:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "PublicSubnetACIDR"
-    MapPublicIpOnLaunch: true
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Public-A"]]
+  #-------All Subnets-----
+  PublicSubnetA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "PublicSubnetACIDR"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Public-A"]]
 
-PublicSubnetB:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "PublicSubnetBCIDR"
-    MapPublicIpOnLaunch: true
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Public-B"]]
+  PublicSubnetB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "PublicSubnetBCIDR"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Public-B"]]
 
-PrivateSubnetA:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "PrivateSubnetACIDR"
-    MapPublicIpOnLaunch: false
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Private-A"]]
+  PrivateSubnetA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "PrivateSubnetACIDR"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Private-A"]]
 
-PrivateSubnetB:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "PrivateSubnetBCIDR"
-    MapPublicIpOnLaunch: false
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Private-B"]]
+  PrivateSubnetB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "PrivateSubnetBCIDR"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Private-B"]]
 
-DatabaseSubnetA:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "DatabaseSubnetACIDR"
-    MapPublicIpOnLaunch: false
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Database-A"]]
+  DatabaseSubnetA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "DatabaseSubnetACIDR"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Database-A"]]
 
-DatabaseSubnetB:
-  Type: "AWS::EC2::Subnet"
-  Properties:
-    VpcId: !Ref VPC
-    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
-    CidrBlock: !Ref "DatabaseSubnetBCIDR"
-    MapPublicIpOnLaunch: false
-    Tags:
-      - Key: Name
-        Value: !Join ["", [!Ref Environment, "-Database-B"]]
+  DatabaseSubnetB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+      CidrBlock: !Ref "DatabaseSubnetBCIDR"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join ["", [!Ref Environment, "-Database-B"]]
 
 #----------Outputs---------
 Outputs:
