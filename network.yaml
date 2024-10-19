@@ -200,13 +200,13 @@ EIP1:
   Type: AWS::EC2::EIP
   DependsOn: GatewayAttachmentInternet
   Properties:
-  Domain: !Ref VPC
+    Domain: !Ref VPC
 
 EIP2:
   Type: AWS::EC2::EIP
   DependsOn: GatewayAttachmentInternet
   Properties:
-  Domain: !Ref VPC
+    Domain: !Ref VPC
 
 #--------Nat Gateways----------
 NATGatewayA:
@@ -233,67 +233,68 @@ NATGatewayB:
 PublicSubnetA:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "PublicSubnetACIDR"
-  MapPublicIpOnLaunch: true
-  Tags:
-    - Key: Name
-      Value: !Join ["", [!Ref Environment, "-Public-A"]]
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "PublicSubnetACIDR"
+    MapPublicIpOnLaunch: true
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Public-A"]]
 
 PublicSubnetB:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "PublicSubnetBCIDR"
-  MapPublicIpOnLaunch: true
-  Tags:
-    - Key: Name
-      Value: !Join ["", [!Ref Environment, "-Public-B"]]
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "PublicSubnetBCIDR"
+    MapPublicIpOnLaunch: true
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Public-B"]]
 
 PrivateSubnetA:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "PrivateSubnetACIDR"
-  MapPublicIpOnLaunch: false
-  Tags:
-    - Key: Name
-      Value: !Join ["", [!Ref Environment, "-Private-A"]]
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "PrivateSubnetACIDR"
+    MapPublicIpOnLaunch: false
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Private-A"]]
 
 PrivateSubnetB:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "PrivateSubnetBCIDR"
-  MapPublicIpOnLaunch: false
-  Tags:
-    - Key: Name
-      Value: !Join ["", [!Ref Environment, "-Private-B"]]
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "PrivateSubnetBCIDR"
+    MapPublicIpOnLaunch: false
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Private-B"]]
 
 DatabaseSubnetA:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "DatabaseSubnetACIDR"
-  MapPublicIpOnLaunch: false
-  Tags:
-    - Key: Name
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "DatabaseSubnetACIDR"
+    MapPublicIpOnLaunch: false
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Database-A"]]
 
 DatabaseSubnetB:
   Type: "AWS::EC2::Subnet"
   Properties:
-  VpcId: !Ref VPC
-  AvailabilityZone: !Select [0, "Fn::GetAZs": { Ref: "AWS::Region" }]
-  CidrBlock: !Ref "DatabaseSubnetBCIDR"
-  MapPublicIpOnLaunch: false
-  Tags:
-    - Key: Name
-      Value: !Join ["", [!Ref Environment, "-Database-B"]]
+    VpcId: !Ref VPC
+    AvailabilityZone: !Select [1, "Fn::GetAZs": { Ref: "AWS::Region" }]
+    CidrBlock: !Ref "DatabaseSubnetBCIDR"
+    MapPublicIpOnLaunch: false
+    Tags:
+      - Key: Name
+        Value: !Join ["", [!Ref Environment, "-Database-B"]]
 
 #----------Outputs---------
 Outputs:
@@ -323,7 +324,7 @@ Outputs:
 
   PublicB:
     Description: ID for Public Subnet B
-    Value: !Ref PublicSubnetA
+    Value: !Ref PublicSubnetB
     Export:
       Name: !Join ["-", [!Ref "Environment", "PublicSubnetB"]]
 
