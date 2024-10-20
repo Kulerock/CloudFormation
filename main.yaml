@@ -24,7 +24,8 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH and HTTP
-      VpcId: !ImportValue !Join ["-", [!Ref "Environment", "VPC"]]
+      VpcId:
+        Fn::ImportValue: !Join ["-", [!Ref Environment, VPC]]
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -69,8 +70,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !ImportValue !Join ["-", [!Ref "Environment", "PublicSubnetA"]]
-        - !ImportValue !Join ["-", [!Ref "Environment", "PublicSubnetB"]]
+        - Fn::ImportValue: !Join ["-", [!Ref "Environment", "PublicSubnetA"]]
+        - Fn::ImportValue: !Join ["-", [!Ref "Environment", "PublicSubnetB"]]
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: "1"
