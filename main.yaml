@@ -6,10 +6,10 @@ Parameters:
   InstanceType:
     Type: String
     Default: t3.micro
-    Description: Please enter the instance type
   Environment:
     Type: String
     Default: prod
+
 # Mapping
 Mappings:
   RegionMap:
@@ -19,13 +19,34 @@ Mappings:
 
 # Resources
 Resources:
+  # IAM Role for SSM
+  SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "SSMAccessRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref SSMRole
+
   # Security Group & dynamic ports
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH and HTTP
       VpcId:
-        Fn::ImportValue: !Join ["-", [!Ref Environment, VPC]]
+        Fn::ImportValue: !Sub "${Environment}-VPC"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -51,6 +72,7 @@ Resources:
       LaunchTemplateData:
         ImageId: ami-097c5c21a18dc59ea
         InstanceType: !Ref InstanceType
+        IamInstanceProfile: !Ref InstanceProfile
         NetworkInterfaces:
           - DeviceIndex: 0
             Groups:
@@ -70,8 +92,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - Fn::ImportValue: !Join ["-", [!Ref "Environment", "PublicSubnetA"]]
-        - Fn::ImportValue: !Join ["-", [!Ref "Environment", "PublicSubnetB"]]
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: "1"
@@ -90,9 +112,12 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
-      AvailabilityZones:
-        - !FindInMap [RegionMap, !Ref AWS::Region, az1]
-        - !FindInMap [RegionMap, !Ref AWS::Region, az2]
+      Subnets:
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
+      # AvailabilityZones:
+      #   - !FindInMap [RegionMap, !Ref AWS::Region, az1]
+      #   - !FindInMap [RegionMap, !Ref AWS::Region, az2]
       Listeners:
         - LoadBalancerPort: 80
           InstancePort: 80
