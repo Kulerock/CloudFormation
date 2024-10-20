@@ -7,10 +7,9 @@ Parameters:
     Type: String
     Default: t3.micro
     Description: Please enter the instance type
-  VpcId:
+  Environment:
     Type: String
-    Default: vpc-04638fa44d53e81de
-
+    Default: prod
 # Mapping
 Mappings:
   RegionMap:
@@ -25,7 +24,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH and HTTP
-      VpcId: !Ref VpcId
+      VpcId: !ImportValue !Join ["-", [!Ref "Environment", "VPC"]]
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -70,8 +69,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - subnet-03282908de6da2cc6
-        - subnet-01c0d6e07209094ca
+        - !ImportValue !Join ["-", [!Ref "Environment", "PublicSubnetA"]]
+        - !ImportValue !Join ["-", [!Ref "Environment", "PublicSubnetB"]]
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: "1"
