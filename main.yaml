@@ -72,7 +72,8 @@ Resources:
       LaunchTemplateData:
         ImageId: ami-097c5c21a18dc59ea
         InstanceType: !Ref InstanceType
-        IamInstanceProfile: !Ref InstanceProfile
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
         NetworkInterfaces:
           - DeviceIndex: 0
             Groups:
