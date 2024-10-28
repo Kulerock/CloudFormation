@@ -8,7 +8,7 @@ Parameters:
     Default: t3.micro
   Environment:
     Type: String
-    Default: prod
+    Default: "Prod"
 
 # Mapping
 Mappings:
