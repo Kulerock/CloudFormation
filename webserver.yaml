@@ -93,9 +93,10 @@ Resources:
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
-          - cfn-hup
-          - nginx-download
-          - website-launch
+          default:
+            - cfn-hup
+            - nginx-download
+            - website-launch
         cfn-hup: #чтобы обновлялся кэш метадаты в инстансе
           files:
             "/etc/cfn/cfn-hup.conf":
