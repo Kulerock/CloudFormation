@@ -134,9 +134,8 @@ Resources:
             get_ip:
               command: "myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`"
           files:
-            "/var/www/html/index.html":
+            "/usr/share/nginx/html/index.html":
               content: !Sub |
-                [main]
                 <html>
                 <head><title>Hi</title></head>
                 <body>
@@ -144,9 +143,16 @@ Resources:
                 <h2>My ip is - $myip </h2>
                 </body>
                 </html>
-              mode: "000400"
+              mode: "000744"
               owner: root
               group: root
+          services:
+            sysvinit:
+              nginx:
+                enabled: true
+                ensureRunning: true
+                files:
+                  - /usr/share/nginx/html/index.html
     Properties:
       VPCZoneIdentifier:
         - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
