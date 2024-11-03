@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation template to deploy VPC and related resources
+Description: CloudFormation template to deploy VPC and webserver
 
 # VPC & Availability Zones
 Parameters:
@@ -79,15 +79,70 @@ Resources:
             Groups:
               - !GetAtt SecurityGroup.GroupId
             DeleteOnTermination: true
-        UserData:
-          Fn::Base64: !Sub |
-            #!/bin/bash
-            yum -y update
-            yum -y install httpd
-            myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
-            echo "<html><body bgcolor='green'><h2>WebServer with IP: <font color='red'>$myip</font></h2></body></html>" > /var/www/html/index.html
-            service httpd start
-            chkconfig httpd on
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          - "cfn-hup"
+          - "nginx-download"
+          - "website-launch"
+        cfn-hup: #чтобы обновлялся кэш метадаты в инстансе
+          files:
+            "/etc/cfn/cfn-hup.conf":
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=1
+              mode: "000400"
+              owner: root
+              group: root
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init --verbose --stack=${AWS::StackName} --region=${AWS::Region} --resource=LaunchConfig
+                runas=root
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: true
+                ensureRunning: true
+                files:
+                  - "/etc/cfn/cfn-hup.conf"
+                  - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+        nginx-download:
+          commands:
+            update:
+              command: "yum -y update"
+            download:
+              command: "yum -y install nginx"
+        website-launch:
+          commands:
+            get_ip:
+              command: "myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`"
+          files:
+            "index.html":
+              content: !Sub |
+                [main]
+                <html>
+                <head><title>Hi</title></head>
+                <body>
+                <h1>Launched stack ${AWS::StackName} in  ${AWS::Region} AWS Region.</h1>
+                <h2>My ip is - $myip </h2>
+                </body>
+                </html>
+              mode: "000400"
+              owner: root
+              group: root
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum install -y aws-cfn-bootstrap
+          yum update -y
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource AutoScalingGroup --region ${AWS::Region}
+
   # Auto Scaling Group
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup

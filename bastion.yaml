@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to deploy VPC and related resources
+
+# VPC & Availability Zones
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  Environment:
+    Type: String
+    Default: "Prod"
+
+# Mapping
+Mappings:
+  RegionMap:
+    eu-north-1:
+      az1: eu-north-1a
+      az2: eu-north-1b
+
+# Resources
+Resources:
+  # IAM Role for SSM
+  SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "SSMAccessRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref SSMRole
+
+  # Security Group & dynamic ports
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP
+      VpcId:
+        Fn::ImportValue: !Sub "${Environment}-VPC"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  # Launch Template
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: WebServer-Highly-Available-1
+      LaunchTemplateData:
+        ImageId: ami-097c5c21a18dc59ea
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            Groups:
+              - !GetAtt SecurityGroup.GroupId
+            DeleteOnTermination: true
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum -y update
+            yum -y install httpd
+            myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
+            echo "<html><body bgcolor='green'><h2>WebServer with IP: <font color='red'>$myip</font></h2></body></html>" > /var/www/html/index.html
+            service httpd start
+            chkconfig httpd on
+
+  # Auto Scaling Group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: "1"
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      Tags:
+        - Key: Name
+          Value: WebServer-in-ASG
+          PropagateAtLaunch: true
+        - Key: Owner
+          Value: Kate
+          PropagateAtLaunch: true
+
+  # Load Balancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Subnets:
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
+        - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
+      # AvailabilityZones:
+      #   - !FindInMap [RegionMap, !Ref AWS::Region, az1]
+      #   - !FindInMap [RegionMap, !Ref AWS::Region, az2]
+      Listeners:
+        - LoadBalancerPort: 80
+          InstancePort: 80
+          Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        Interval: 10
+        Timeout: 5
+        UnhealthyThreshold: 2
+        HealthyThreshold: 2
+      SecurityGroups:
+        - !Ref SecurityGroup
+
+# Output
+Outputs:
+  WebLoadBalancerURL:
+    Description: The URL of the web load balancer
+    Value: !GetAtt LoadBalancer.DNSName
