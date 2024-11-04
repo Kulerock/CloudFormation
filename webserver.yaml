@@ -82,10 +82,9 @@ Resources:
         UserData: # понять почему не видит это !!!!!!!!!!!!!!!!!!!!
           Fn::Base64: !Sub |
             #!/bin/bash -xe
-            yum update -y
-            yum install -y aws-cfn-bootstrap
-            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}
-            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource AutoScalingGroup --region ${AWS::Region}
+            sudo yum update -y aws-cfn-bootstrap
+            sudo /opt/aws/bin/cfn-init -s --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}
+            sudo /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}
 
   # Auto Scaling Group
   AutoScalingGroup:
