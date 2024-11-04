@@ -33,6 +33,7 @@ Resources:
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
