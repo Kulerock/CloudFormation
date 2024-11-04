@@ -79,7 +79,7 @@ Resources:
             Groups:
               - !GetAtt SecurityGroup.GroupId
             DeleteOnTermination: true
-        UserData:
+        UserData: # понять почему не видит это !!!!!!!!!!!!!!!!!!!!
           Fn::Base64: !Sub |
             #!/bin/bash -xe
             yum update -y
@@ -131,25 +131,25 @@ Resources:
               command: "yum -y install nginx"
         website-launch:
           commands:
-          files:
-            "/usr/share/nginx/html/index.html":
-              content: !Sub |
-                <html>
-                <head><title>Hi</title></head>
-                <body>
-                <h1>Launched stack ${AWS::StackName} in  ${AWS::Region} AWS Region.</h1>
-                </body>
-                </html>
-              mode: "000744"
-              owner: root
-              group: root
-          services:
-            sysvinit:
-              nginx:
-                enabled: true
-                ensureRunning: true
-                files:
-                  - /usr/share/nginx/html/index.html
+            files:
+              "/usr/share/nginx/html/index.html":
+                content: !Sub |
+                  <html>
+                  <head><title>Hi</title></head>
+                  <body>
+                  <h1>Launched stack ${AWS::StackName} in  ${AWS::Region} AWS Region.</h1>
+                  </body>
+                  </html>
+                mode: "000744"
+                owner: root
+                group: root
+            services:
+              sysvinit:
+                nginx:
+                  enabled: true
+                  ensureRunning: true
+                  files:
+                    - /usr/share/nginx/html/index.html
     Properties:
       VPCZoneIdentifier:
         - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
