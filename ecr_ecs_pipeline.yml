@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Elastic Container Registory Repository using Cloudformation
+
+Parameters:
+  repoName:
+    Description: Repo_2
+    Type: String
+
+Resources:
+  ECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: "Repo_2"
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Description: "Codebuild project to push docker image to ecr"
+    Environment:
+      Type: "LINUX_CONTAINER"
+      ComputeType: "BUILD_GENERAL1_SMALL"
+      Image: "aws/codebuild/standard:5.0"
+      PrivilegedMode: true
+      EnvironmentVariables:
+        - Name: AWS_DEFAULT_REGION
+          Value: !Ref AWS::Region
+        - Name: AWS_ACCOUNT_ID
+          Value: !Ref "AWS::AccountId"
+        - Name: AWS_ECR_REPOSITORY_URI
+          Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}
+        - Name: IMAGE_REPO_NAME
+          Value: !Ref Repo_2
+        - Name: IMAGE_TAG
+          Value: "latest"
+        - Name: GITHUB_TOKEN
+          Value: "{{resolve:secretsmanager:github-access-token:SecretString:github-token}}"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        Type: "CODEPIPELINE"
+        BuildSpec: buildspec.yml
+
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref GithubRepository
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "PushImageToEcr"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+        - PolicyName: "CodeBuildLogsRole"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+        - PolicyName: "GetAndPutArtifacts"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub ${ArtifactBucket.Arn}/*
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: PipelineForFlaskApi
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              OutputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                Owner: !Ref GithubAccount
+                Repo: !Ref GithubRepository
+                PollForSourceChanges: false
+                Branch: !Ref GithubBranch
+                OAuthToken: !Ref GithubAuthToken
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceCode
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+    DependsOn: EcrRepository
+
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: CFNCluster
+  ECSTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      ContainerDefinitions:
+        - Command:
+            - >-
+              /bin/sh -c "echo '<html> <head> <title>Amazon ECS Sample
+              App</title> <style>body {margin-top: 40px; background-color:
+              #333;} </style> </head><body> <div
+              style=color:white;text-align:center> <h1>Amazon ECS Sample
+              App</h1> <h2>Congratulations!</h2> <p>Your application is now
+              running on a container in Amazon ECS.</p> </div></body></html>' > 
+              /usr/local/apache2/htdocs/index.html && httpd-foreground"
+          EntryPoint:
+            - sh
+            - "-c"
+          Essential: true
+          Image: "httpd:2.4"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/fargate-task-definition
+              awslogs-region: us-east-1
+              awslogs-stream-prefix: ecs
+          Name: sample-fargate-app
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+      Cpu: 256
+      ExecutionRoleArn: "arn:aws:iam::111122223333:role/ecsTaskExecutionRole"
+      Family: task-definition-cfn
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+  ECSService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      ServiceName: cfn-service
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - sg-0cb625a84a0ab39c5
+          Subnets:
+            - subnet-021345abcdef67890
+      TaskDefinition: !Ref ECSTaskDefinition
