@@ -5,12 +5,15 @@ Parameters:
   repoName:
     Description: Repo_2
     Type: String
+  Environment:
+    Type: String
+    Default: "Prod"
 
 Resources:
   ECR:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: "Repo_2"
+      RepositoryName: !Ref repoName
       RepositoryPolicyText:
         Version: "2012-10-17"
         Statement:
@@ -45,22 +48,17 @@ Resources:
         - Name: AWS_ACCOUNT_ID
           Value: !Ref "AWS::AccountId"
         - Name: AWS_ECR_REPOSITORY_URI
-          Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}
+          Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}"
         - Name: IMAGE_REPO_NAME
-          Value: !Ref Repo_2
+          Value: !Ref repoName
         - Name: IMAGE_TAG
           Value: "latest"
         - Name: GITHUB_TOKEN
-          Value: "{{resolve:secretsmanager:github-access-token:SecretString:github-token}}"
+          Value: "{{resolve:secretsmanager:github-codepipeline-access-token:SecretString:github-token}}"
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Source:
         Type: "CODEPIPELINE"
         BuildSpec: buildspec.yml
-
-  EcrRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Ref GithubRepository
 
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -111,11 +109,43 @@ Resources:
                   - s3:PutObject
                   - s3:ListBucket
                 Resource:
-                  - !GetAtt ArtifactBucket.Arn
-                  - !Sub ${ArtifactBucket.Arn}/*
+                  - !GetAtt WebsiteBucket.Arn
+                  - !Sub "${WebsiteBucket.Arn}/*"
+        - PolicyName: "ECSCloudWatchLogsPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/*"
 
-  ArtifactBucket:
+  WebsiteBucket:
     Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: my-static-website-bucket34
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "${WebsiteBucket}/*"
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -124,7 +154,7 @@ Resources:
       RoleArn: !GetAtt PipelineRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactBucket
+        Location: !Ref WebsiteBucket
       Stages:
         - Name: Source
           Actions:
@@ -141,7 +171,7 @@ Resources:
                 Repo: !Ref GithubRepository
                 PollForSourceChanges: false
                 Branch: !Ref GithubBranch
-                OAuthToken: !Ref GithubAuthToken
+                OAuthToken: "{{resolve:secretsmanager:github-codepipeline-access-token:SecretString:github-token}}"
         - Name: Build
           Actions:
             - Name: Build
@@ -156,6 +186,19 @@ Resources:
                 ProjectName: !Ref CodeBuildProject
     DependsOn: EcrRepository
 
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
   ECSCluster:
     Type: "AWS::ECS::Cluster"
     Properties:
@@ -164,33 +207,24 @@ Resources:
     Type: "AWS::ECS::TaskDefinition"
     Properties:
       ContainerDefinitions:
-        - Command:
-            - >-
-              /bin/sh -c "echo '<html> <head> <title>Amazon ECS Sample
-              App</title> <style>body {margin-top: 40px; background-color:
-              #333;} </style> </head><body> <div
-              style=color:white;text-align:center> <h1>Amazon ECS Sample
-              App</h1> <h2>Congratulations!</h2> <p>Your application is now
-              running on a container in Amazon ECS.</p> </div></body></html>' > 
-              /usr/local/apache2/htdocs/index.html && httpd-foreground"
-          EntryPoint:
-            - sh
-            - "-c"
-          Essential: true
-          Image: "httpd:2.4"
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: /ecs/fargate-task-definition
-              awslogs-region: us-east-1
-              awslogs-stream-prefix: ecs
-          Name: sample-fargate-app
-          PortMappings:
-            - ContainerPort: 80
-              HostPort: 80
-              Protocol: tcp
+        EntryPoint:
+          - sh
+          - "-c"
+        Essential: true
+        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}:latest"
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group: /ecs/fargate-task-definition
+            awslogs-region: !Ref "AWS::Region"
+            awslogs-stream-prefix: ecs
+        Name: sample-fargate-app
+        PortMappings:
+          - ContainerPort: 80
+            HostPort: 80
+            Protocol: tcp
       Cpu: 256
-      ExecutionRoleArn: "arn:aws:iam::111122223333:role/ecsTaskExecutionRole"
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
       Family: task-definition-cfn
       Memory: 512
       NetworkMode: awsvpc
@@ -211,5 +245,6 @@ Resources:
           SecurityGroups:
             - sg-0cb625a84a0ab39c5
           Subnets:
-            - subnet-021345abcdef67890
+            - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
+            - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
       TaskDefinition: !Ref ECSTaskDefinition
