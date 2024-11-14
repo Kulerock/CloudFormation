@@ -8,6 +8,15 @@ Parameters:
   Environment:
     Type: String
     Default: "Prod"
+  GithubAccount:
+    Type: String
+    Default: Kulerock
+  GithubRepository:
+    Type: String
+    Default: codebuild-demo
+  GithubBranch:
+    Type: String
+    Default: main
 
 Resources:
   ECR:
@@ -37,24 +46,24 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
       Description: "Codebuild project to push docker image to ecr"
-    Environment:
-      Type: "LINUX_CONTAINER"
-      ComputeType: "BUILD_GENERAL1_SMALL"
-      Image: "aws/codebuild/standard:5.0"
-      PrivilegedMode: true
-      EnvironmentVariables:
-        - Name: AWS_DEFAULT_REGION
-          Value: !Ref AWS::Region
-        - Name: AWS_ACCOUNT_ID
-          Value: !Ref "AWS::AccountId"
-        - Name: AWS_ECR_REPOSITORY_URI
-          Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}"
-        - Name: IMAGE_REPO_NAME
-          Value: !Ref repoName
-        - Name: IMAGE_TAG
-          Value: "latest"
-        - Name: GITHUB_TOKEN
-          Value: "{{resolve:secretsmanager:github-codepipeline-access-token:SecretString:github-token}}"
+      Environment:
+        Type: "LINUX_CONTAINER"
+        ComputeType: "BUILD_GENERAL1_SMALL"
+        Image: "aws/codebuild/standard:5.0"
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref "AWS::AccountId"
+          - Name: AWS_ECR_REPOSITORY_URI
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}"
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref repoName
+          - Name: IMAGE_TAG
+            Value: "latest"
+          - Name: GITHUB_TOKEN
+            Value: "{{resolve:secretsmanager:github-codepipeline-access-token:SecretString:github-token}}"
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Source:
         Type: "CODEPIPELINE"
@@ -145,7 +154,25 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: "s3:GetObject"
-            Resource: !Sub "${WebsiteBucket}/*"
+            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+
+  PipelineRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "PipelineS3AccessPolicy"
+      Roles:
+        - !Ref PipelineRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt WebsiteBucket.Arn
+              - !Sub "${WebsiteBucket.Arn}/*"
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -203,10 +230,12 @@ Resources:
     Type: "AWS::ECS::Cluster"
     Properties:
       ClusterName: CFNCluster
+
   ECSTaskDefinition:
-    Type: "AWS::ECS::TaskDefinition"
-    Properties:
-      ContainerDefinitions:
+  Type: AWS::ECS::TaskDefinition
+  Properties:
+    ContainerDefinitions:
+      - Name: sample-fargate-app
         EntryPoint:
           - sh
           - "-c"
@@ -218,20 +247,20 @@ Resources:
             awslogs-group: /ecs/fargate-task-definition
             awslogs-region: !Ref "AWS::Region"
             awslogs-stream-prefix: ecs
-        Name: sample-fargate-app
         PortMappings:
           - ContainerPort: 80
             HostPort: 80
             Protocol: tcp
-      Cpu: 256
-      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
-      Family: task-definition-cfn
-      Memory: 512
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      RuntimePlatform:
-        OperatingSystemFamily: LINUX
+    Cpu: "256"
+    ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
+    Family: task-definition-cfn
+    Memory: "512"
+    NetworkMode: awsvpc
+    RequiresCompatibilities:
+      - FARGATE
+    RuntimePlatform:
+      OperatingSystemFamily: LINUX
+
   ECSService:
     Type: "AWS::ECS::Service"
     Properties:
