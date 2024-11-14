@@ -3,11 +3,11 @@ Description: Elastic Container Registory Repository using Cloudformation
 
 Parameters:
   repoName:
-    Description: Repo_2
+    Default: reposit-ory12343295
     Type: String
   Environment:
     Type: String
-    Default: "Prod"
+    Default: Prod
   GithubAccount:
     Type: String
     Default: Kulerock
@@ -22,7 +22,7 @@ Resources:
   ECR:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Ref repoName
+      RepositoryName: reposit-ory12343295
       RepositoryPolicyText:
         Version: "2012-10-17"
         Statement:
@@ -133,7 +133,6 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: PublicRead
       BucketName: my-static-website-bucket34
       WebsiteConfiguration:
         IndexDocument: index.html
@@ -143,7 +142,6 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
-
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -154,7 +152,53 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: "s3:GetObject"
-            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+            Resource: !Sub "${WebsiteBucket.Arn}/*"
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodePipelineServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CodePipelineS3Access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${WebsiteBucket}/*" # Доступ к бакету S3 для артефактов
+                  - !GetAtt WebsiteBucket.Arn
+
+        - PolicyName: "CodePipelineCodeBuildAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:BatchGetProjects
+                Resource: "*" # Можно указать ARN конкретного проекта CodeBuild, если известен
+
+        - PolicyName: "CodePipelineCloudWatchLogsAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/*"
 
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
@@ -211,7 +255,7 @@ Resources:
                 - Name: SourceCode
               Configuration:
                 ProjectName: !Ref CodeBuildProject
-    DependsOn: EcrRepository
+    DependsOn: ECR
 
   EcsTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -231,35 +275,57 @@ Resources:
     Properties:
       ClusterName: CFNCluster
 
+  myLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/ecs/fargate-task-definition"
+      RetentionInDays: 7
+
   ECSTaskDefinition:
-  Type: AWS::ECS::TaskDefinition
-  Properties:
-    ContainerDefinitions:
-      - Name: sample-fargate-app
-        EntryPoint:
-          - sh
-          - "-c"
-        Essential: true
-        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}:latest"
-        LogConfiguration:
-          LogDriver: awslogs
-          Options:
-            awslogs-group: /ecs/fargate-task-definition
-            awslogs-region: !Ref "AWS::Region"
-            awslogs-stream-prefix: ecs
-        PortMappings:
-          - ContainerPort: 80
-            HostPort: 80
-            Protocol: tcp
-    Cpu: "256"
-    ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
-    Family: task-definition-cfn
-    Memory: "512"
-    NetworkMode: awsvpc
-    RequiresCompatibilities:
-      - FARGATE
-    RuntimePlatform:
-      OperatingSystemFamily: LINUX
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: sample-fargate-app
+          EntryPoint:
+            - sh
+            - "-c"
+          Essential: true
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}:latest"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref myLogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ecs
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+      Cpu: "256"
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
+      Family: task-definition-cfn
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security Group for ECS Service"
+      VpcId:
+        Fn::ImportValue: !Sub "${Environment}-VPC"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
 
   ECSService:
     Type: "AWS::ECS::Service"
@@ -272,7 +338,7 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           SecurityGroups:
-            - sg-0cb625a84a0ab39c5
+            - !Ref MySecurityGroup
           Subnets:
             - Fn::ImportValue: !Sub "${Environment}-PublicSubnetA"
             - Fn::ImportValue: !Sub "${Environment}-PublicSubnetB"
