@@ -260,6 +260,6 @@ Resources:
 Outputs:
   ECRRepositoryURI:
     Description: URI of the ECR repository
-    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}:latest"
     Export:
       Name: ECRRepositoryURI
