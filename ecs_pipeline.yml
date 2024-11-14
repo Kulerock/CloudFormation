@@ -36,9 +36,6 @@ Resources:
     Properties:
       ContainerDefinitions:
         - Name: sample-fargate-app
-          EntryPoint:
-            - sh
-            - "-c"
           Essential: true
           Image: !ImportValue ECRRepositoryURI
           LogConfiguration:
