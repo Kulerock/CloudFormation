@@ -141,6 +141,7 @@ Resources:
                   - cloudformation:DeleteStack
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
                 Resource: "*"
 
   WebsiteBucket:
