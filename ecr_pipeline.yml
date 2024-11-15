@@ -81,67 +81,33 @@ Resources:
                 - codebuild.amazonaws.com
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
       Policies:
-        - PolicyName: "PushImageToEcr"
+        - PolicyName: "AdditionalPermissions"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - ecr:BatchGetImage
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:CompleteLayerUpload
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:InitiateLayerUpload
-                  - ecr:PutImage
-                  - ecr:UploadLayerPart
-                  - ecr:GetAuthorizationToken
+                  - iam:CreateRole
+                  - iam:DetachRolePolicy
+                  - iam:DeleteRole
                 Resource: "*"
-        - PolicyName: "CodeBuildLogsRole"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
-        - PolicyName: "GetAndPutArtifacts"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                Resource:
-                  - !GetAtt WebsiteBucket.Arn
-                  - !Sub "${WebsiteBucket.Arn}/*"
-        - PolicyName: "ECSCloudWatchLogsPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
+                  - logs:DeleteLogGroup
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/*"
-        - PolicyName: "CloudFormationAccess"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
               - Effect: Allow
                 Action:
-                  - cloudformation:DescribeStacks
-                  - cloudformation:CreateStack
-                  - cloudformation:UpdateStack
-                  - cloudformation:DeleteStack
-                  - cloudformation:ExecuteChangeSet
-                  - cloudformation:CreateChangeSet
-                  - cloudformation:DescribeChangeSet
+                  - ec2:DescribeSecurityGroups
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeClusters
                 Resource: "*"
 
   WebsiteBucket:
