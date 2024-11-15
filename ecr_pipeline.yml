@@ -269,6 +269,37 @@ Resources:
                 - Name: SourceCode
               Configuration:
                 ProjectName: !Ref CodeBuildProject
+        - Name: Deploy
+          Actions:
+            - Name: CreateChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                StackName: MyStackName
+                ChangeSetName: codepipeline-changeset
+                Capabilities: CAPABILITY_IAM
+                TemplatePath: "SourceCode::ecs_pipeline.yml"
+                ParameterOverrides: |
+                  {
+                    "Env": "Prod",
+                    "ImageUri": "<ECR_IMAGE_URI>"
+                  }
+              InputArtifacts:
+                - Name: SourceCode
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                StackName: MyStackName
+                ChangeSetName: codepipeline-changeset
     DependsOn: ECR
 
 Outputs:
