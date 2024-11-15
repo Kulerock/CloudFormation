@@ -280,6 +280,7 @@ Resources:
                 ChangeSetName: codepipeline-changeset
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: "SourceCode::ecs_pipeline.yml"
+                RoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CodepipelineDeployments"
                 ParameterOverrides: |
                   {
                     "Env": "Prod",
@@ -297,6 +298,7 @@ Resources:
                 ActionMode: CHANGE_SET_EXECUTE
                 StackName: MyStackName
                 ChangeSetName: codepipeline-changeset
+                RoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CodepipelineDeployments"
     DependsOn: ECR
 
 Outputs:
