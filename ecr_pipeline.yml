@@ -394,8 +394,8 @@ Resources:
                 RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
                 ParameterOverrides: !Sub |
                   {
-                    "Env": "Prod",
-                    "ImageUri": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/my-ecr-repo:latest"
+                    "Environment": "Prod",
+                    "ImageUri": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${repoName}:#{sources.CommitId}"
                   }
               InputArtifacts:
                 - Name: SourceCode

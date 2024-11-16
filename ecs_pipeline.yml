@@ -6,6 +6,9 @@ Parameters:
     Type: String
     Default: Prod
 
+  ImageUri:
+    Type: String
+
 Resources:
   EcsTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -37,7 +40,7 @@ Resources:
       ContainerDefinitions:
         - Name: sample-fargate-app
           Essential: true
-          Image: !ImportValue ECRRepositoryURI
+          Image: !Ref ImageUri
           LogConfiguration:
             LogDriver: awslogs
             Options:
