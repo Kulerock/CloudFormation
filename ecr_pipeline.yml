@@ -357,14 +357,15 @@ Resources:
                 Owner: ThirdParty
                 Provider: GitHub
                 Version: "1"
-              OutputArtifacts:
-                - Name: SourceCode
               Configuration:
                 Owner: !Ref GithubAccount
                 Repo: !Ref GithubRepository
                 PollForSourceChanges: false
                 Branch: !Ref GithubBranch
                 OAuthToken: "{{resolve:secretsmanager:github-codepipeline-access-token:SecretString:github-token}}"
+              OutputArtifacts:
+                - Name: SourceCode
+              Namespace: sources
         - Name: Build
           Actions:
             - Name: Build

@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create CLuster
+
+Parameters:
+  Env:
+    Description: Env-name
+    Type: String
+    Default: Prod
+    # MinLength: 3
+    # AllowedPattern: "^[a-z]*$"
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref Env
+
+Outputs:
+  ECSClusterName:
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Join ["::", [!Ref Env, "ECSClusterName"]]
