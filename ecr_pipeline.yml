@@ -302,8 +302,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - cloudformation.amazonaws.com
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/CodePipelineServiceRole"
             Action: "sts:AssumeRole"
       Policies:
         - PolicyName: DeploymentPolicy
@@ -312,18 +311,25 @@ Resources:
             Statement:
               - Action: iam:PassRole
                 Effect: Allow
-                Resource: !GetAtt CloudformationIamRole.Arn
+                Resource:
+                  - "*"
                 Condition:
                   StringEqualsIfExists:
-                    "iam:PassedToService": cloudformation.amazonaws.com
+                    "iam:PassedToService":
+                      - cloudformation.amazonaws.com
+                      - elasticbeanstalk.amazonaws.com
+                      - ec2.amazonaws.com
               - Action:
+                  - autoscaling:*
                   - cloudformation:*
-                  - s3:PutObject
-                  - s3:GetObject
-                  - s3:ListBucket
+                  - cloudwatch:*
                   - ec2:*
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
+                  - elasticbeanstalk:*
+                  - elasticloadbalancing:*
+                  - logs:*
+                  - s3:*
+                  - sns:*
+                  - cloudfront:CreateInvalidation
                 Effect: "Allow"
                 Resource: "*"
         - PolicyName: "CloudFormationAccess"
@@ -340,6 +346,27 @@ Resources:
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:DescribeChangeSet
                 Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+
+  CloudformationIamRoleNew:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CloudformationDeploymentsNew
+      Description: Allow change infra via AWS Cloudformation
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "default"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "*"
+                Resource: "*"
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -382,6 +409,7 @@ Resources:
         - Name: Deploy
           Actions:
             - Name: CreateChangeSet
+              RunOrder: 1
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -393,7 +421,7 @@ Resources:
                 ChangeSetName: codepipeline-changeset
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: "SourceCode::ecs_pipeline.yml"
-                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
+                RoleArn: !GetAtt CloudformationIamRoleNew.Arn
                 ParameterOverrides: !Sub |
                   {
                     "Environment": "Prod",
@@ -401,7 +429,9 @@ Resources:
                   }
               InputArtifacts:
                 - Name: SourceCode
+              RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
             - Name: ExecuteChangeSet
+              RunOrder: 3
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
