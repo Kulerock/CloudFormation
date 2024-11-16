@@ -223,7 +223,7 @@ Resources:
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:DeleteStack
                   - cloudformation:UpdateStack
-                Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/MyStackName/*"
+                Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/*"
 
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
@@ -273,7 +273,8 @@ Resources:
         Statement:
           Effect: Allow
           Principal:
-            AWS: !Join [":", ["arn:aws:iam", "", !Ref CicdAccountId, "root"]]
+            Service:
+              - "codepipeline.amazonaws.com"
           Action: "sts:AssumeRole"
       Policies:
         - PolicyName: DeploymentPolicy
@@ -291,14 +292,6 @@ Resources:
                       - elasticbeanstalk.amazonaws.com
                       - ec2.amazonaws.com
               - Action:
-                  - kms:Decrypt
-                  - kms:DescribeKey
-                  - kms:Encrypt
-                  - kms:GenerateDataKey*
-                  - kms:ReEncrypt*
-                Effect: "Allow"
-                Resource: !Ref CicdKmsKeyArn
-              - Action:
                   - autoscaling:*
                   - cloudformation:*
                   - cloudwatch:*
@@ -311,6 +304,21 @@ Resources:
                   - cloudfront:CreateInvalidation
                 Effect: "Allow"
                 Resource: "*"
+        - PolicyName: "CloudFormationAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                Resource:
+                  - "*"
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -381,7 +389,7 @@ Resources:
                 ActionMode: CHANGE_SET_EXECUTE
                 StackName: MyStackName
                 ChangeSetName: codepipeline-changeset
-                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
+                RoleArn: !GetAtt CloudformationIamRole.Arn
     DependsOn: ECR
 
 Outputs:
