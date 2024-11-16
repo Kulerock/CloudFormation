@@ -290,17 +290,12 @@ Resources:
         - PolicyName: DeploymentPolicy
           PolicyDocument:
             Statement:
-              - Action:
-                  - iam:PassRole
+              - Action: iam:PassRole
                 Effect: Allow
-                Resource:
-                  - "*"
+                Resource: !GetAtt CloudformationIamRole.Arn
                 Condition:
                   StringEqualsIfExists:
-                    "iam:PassedToService":
-                      - cloudformation.amazonaws.com
-                      - elasticbeanstalk.amazonaws.com
-                      - ec2.amazonaws.com
+                    "iam:PassedToService": cloudformation.amazonaws.com
               - Action:
                   - autoscaling:*
                   - cloudformation:*
@@ -400,7 +395,10 @@ Resources:
                 StackName: MyStackName
                 ChangeSetName: codepipeline-changeset
                 RoleArn: !GetAtt CloudformationIamRole.Arn
-    DependsOn: ECR
+    DependsOn:
+      - ECR
+      - CodepipelineDeploymentIamRole
+      - CloudformationIamRole
 
 Outputs:
   ECRRepositoryURI:
