@@ -176,7 +176,10 @@ Resources:
           - Effect: Allow
             Principal:
               Service: codepipeline.amazonaws.com
-            Action: "sts:AssumeRole"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
       Policies:
         - PolicyName: IAMPassRoleAccess
           PolicyDocument:
@@ -186,7 +189,8 @@ Resources:
                 Action: iam:PassRole
                 Resource:
                   - !GetAtt CloudformationIamRole.Arn
-                  - !GetAtt CodepipelineDeploymentIamRole.Arn
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
+
         - PolicyName: "CodePipelineS3Access"
           PolicyDocument:
             Version: "2012-10-17"
@@ -233,32 +237,6 @@ Resources:
                   - cloudformation:DeleteStack
                   - cloudformation:UpdateStack
                   - cloudformation:DescribeChangeSet
-                Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/*"
-
-        - PolicyName: IAMPassRoleAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
-
-        - PolicyName: "CodePipelineAccess"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                  - codebuild:StartBuild
-                  - codebuild:BatchGetBuilds
-                  - codebuild:BatchGetProjects
-                  - cloudformation:DescribeStacks
-                  - cloudformation:CreateChangeSet
-                  - cloudformation:ExecuteChangeSet
                 Resource: "*"
 
   PipelineRolePolicy:
@@ -309,7 +287,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-                - "codepipeline.amazonaws.com"
+                - cloudformation.amazonaws.com
             Action: "sts:AssumeRole"
       Policies:
         - PolicyName: DeploymentPolicy
@@ -323,16 +301,12 @@ Resources:
                   StringEqualsIfExists:
                     "iam:PassedToService": cloudformation.amazonaws.com
               - Action:
-                  - autoscaling:*
                   - cloudformation:*
-                  - cloudwatch:*
-                  - ec2:*
-                  - elasticbeanstalk:*
-                  - elasticloadbalancing:*
-                  - logs:*
-                  - s3:*
-                  - sns:*
-                  - cloudfront:CreateInvalidation
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Effect: "Allow"
                 Resource: "*"
         - PolicyName: "CloudFormationAccess"
@@ -348,8 +322,7 @@ Resources:
                   - cloudformation:CreateChangeSet
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:DescribeChangeSet
-                Resource:
-                  - "*"
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -402,15 +375,14 @@ Resources:
                 ChangeSetName: codepipeline-changeset
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: "SourceCode::ecs_pipeline.yml"
-                RoleArn: !GetAtt CloudformationIamRole.Arn
-                ParameterOverrides: |
+                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
+                ParameterOverrides: !Sub |
                   {
                     "Env": "Prod",
-                    "ImageUri": "<ECR_IMAGE_URI>"
+                    "ImageUri": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/my-ecr-repo:latest"
                   }
               InputArtifacts:
                 - Name: SourceCode
-              RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
             - Name: ExecuteChangeSet
               ActionTypeId:
                 Category: Deploy
