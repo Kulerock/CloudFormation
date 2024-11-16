@@ -226,6 +226,15 @@ Resources:
                   - cloudformation:DescribeChangeSet
                 Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/*"
 
+        - PolicyName: IAMPassRoleAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
+
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
