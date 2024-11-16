@@ -233,7 +233,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - iam:PassRole
-                Resource: "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
 
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
