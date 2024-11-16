@@ -195,7 +195,7 @@ Resources:
             Action:
               - "sts:AssumeRole"
       ManagedPolicyArns:
-        - !GetAtt CodePipelinePolicy.Arn
+        - !Ref CodePipelinePolicy
       Policies:
         - PolicyName: IAMPassRoleAccess
           PolicyDocument:
