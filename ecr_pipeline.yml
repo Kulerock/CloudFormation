@@ -153,6 +153,7 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
+    DeletionPolicy: Retain
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -211,6 +212,19 @@ Resources:
                   - logs:PutLogEvents
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/*"
 
+        - PolicyName: CloudFormationAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteStack
+                  - cloudformation:UpdateStack
+                Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/MyStackName/*"
+
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -229,10 +243,83 @@ Resources:
               - !GetAtt WebsiteBucket.Arn
               - !Sub "${WebsiteBucket.Arn}/*"
 
+CloudformationIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CloudformationDeployments
+      Description: Allow change infra via AWS Cloudformation
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "cloudformation.amazonaws.com"
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: "default"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: "*"
+                Resource: "*"
+
+  CodepipelineDeploymentIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodepipelineDeployments
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            AWS: !Join [":", ["arn:aws:iam", "", !Ref CicdAccountId, "root"]]
+          Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: DeploymentPolicy
+          PolicyDocument:
+            Statement:
+              -
+                Action:
+                  - iam:PassRole
+                Effect: Allow
+                Resource:
+                  - "*"
+                Condition:
+                  StringEqualsIfExists:
+                    "iam:PassedToService":
+                        - cloudformation.amazonaws.com
+                        - elasticbeanstalk.amazonaws.com
+                        - ec2.amazonaws.com
+              -
+                Action:
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:Encrypt
+                  - kms:GenerateDataKey*
+                  - kms:ReEncrypt*
+                Effect: "Allow"
+                Resource: !Ref CicdKmsKeyArn
+              -
+                Action:
+                  - autoscaling:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - ec2:*
+                  - elasticbeanstalk:*
+                  - elasticloadbalancing:*
+                  - logs:*
+                  - s3:*
+                  - sns:*
+                  - cloudfront:CreateInvalidation
+                Effect: "Allow"
+                Resource: "*"
+
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: PipelineForFlaskApi
+      Name: Pipeline
       RoleArn: !GetAtt PipelineRole.Arn
       ArtifactStore:
         Type: S3
@@ -280,7 +367,7 @@ Resources:
                 ChangeSetName: codepipeline-changeset
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: "SourceCode::ecs_pipeline.yml"
-                RoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CodepipelineDeployments"
+                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
                 ParameterOverrides: |
                   {
                     "Env": "Prod",
@@ -298,7 +385,7 @@ Resources:
                 ActionMode: CHANGE_SET_EXECUTE
                 StackName: MyStackName
                 ChangeSetName: codepipeline-changeset
-                RoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CodepipelineDeployments"
+                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
     DependsOn: ECR
 
 Outputs:
