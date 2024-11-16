@@ -243,7 +243,7 @@ Resources:
               - !GetAtt WebsiteBucket.Arn
               - !Sub "${WebsiteBucket.Arn}/*"
 
-CloudformationIamRole:
+  CloudformationIamRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: CloudformationDeployments
@@ -254,14 +254,13 @@ CloudformationIamRole:
             Principal:
               Service:
                 - "cloudformation.amazonaws.com"
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
       Policies:
         - PolicyName: "default"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              -
-                Effect: Allow
+              - Effect: Allow
                 Action: "*"
                 Resource: "*"
 
@@ -280,8 +279,7 @@ CloudformationIamRole:
         - PolicyName: DeploymentPolicy
           PolicyDocument:
             Statement:
-              -
-                Action:
+              - Action:
                   - iam:PassRole
                 Effect: Allow
                 Resource:
@@ -289,11 +287,10 @@ CloudformationIamRole:
                 Condition:
                   StringEqualsIfExists:
                     "iam:PassedToService":
-                        - cloudformation.amazonaws.com
-                        - elasticbeanstalk.amazonaws.com
-                        - ec2.amazonaws.com
-              -
-                Action:
+                      - cloudformation.amazonaws.com
+                      - elasticbeanstalk.amazonaws.com
+                      - ec2.amazonaws.com
+              - Action:
                   - kms:Decrypt
                   - kms:DescribeKey
                   - kms:Encrypt
@@ -301,8 +298,7 @@ CloudformationIamRole:
                   - kms:ReEncrypt*
                 Effect: "Allow"
                 Resource: !Ref CicdKmsKeyArn
-              -
-                Action:
+              - Action:
                   - autoscaling:*
                   - cloudformation:*
                   - cloudwatch:*
