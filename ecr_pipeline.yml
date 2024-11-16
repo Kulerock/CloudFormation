@@ -244,6 +244,23 @@ Resources:
                   - iam:PassRole
                 Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/CodepipelineDeployments"
 
+        - PolicyName: "CodePipelineAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:BatchGetProjects
+                  - cloudformation:DescribeStacks
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                Resource: "*"
+
   PipelineRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -266,16 +283,15 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: CloudformationDeployments
-      Description: Allow change infra via AWS Cloudformation
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - "cloudformation.amazonaws.com"
+              Service: cloudformation.amazonaws.com
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: "default"
+        - PolicyName: CloudFormationFullAccess
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -386,7 +402,7 @@ Resources:
                 ChangeSetName: codepipeline-changeset
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: "SourceCode::ecs_pipeline.yml"
-                RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
+                RoleArn: !GetAtt CloudformationIamRole.Arn
                 ParameterOverrides: |
                   {
                     "Env": "Prod",
@@ -394,6 +410,7 @@ Resources:
                   }
               InputArtifacts:
                 - Name: SourceCode
+              RoleArn: !GetAtt CodepipelineDeploymentIamRole.Arn
             - Name: ExecuteChangeSet
               ActionTypeId:
                 Category: Deploy
