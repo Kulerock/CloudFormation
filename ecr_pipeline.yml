@@ -223,6 +223,7 @@ Resources:
                   - cloudformation:ExecuteChangeSet
                   - cloudformation:DeleteStack
                   - cloudformation:UpdateStack
+                  - cloudformation:DescribeChangeSet
                 Resource: "arn:aws:cloudformation:eu-north-1:361769585400:stack/*"
 
   PipelineRolePolicy:
