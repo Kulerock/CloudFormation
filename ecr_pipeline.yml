@@ -166,6 +166,22 @@ Resources:
             Action: "s3:GetObject"
             Resource: !Sub "${WebsiteBucket.Arn}/*"
 
+  CodePipelinePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: CodePipelineCustomPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - codepipeline:*
+              - s3:*
+              - codebuild:*
+              - cloudformation:*
+              - iam:PassRole
+            Resource: "*"
+
   PipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -179,7 +195,7 @@ Resources:
             Action:
               - "sts:AssumeRole"
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+        - !GetAtt CodePipelinePolicy.Arn
       Policies:
         - PolicyName: IAMPassRoleAccess
           PolicyDocument:
