@@ -321,6 +321,7 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:ListBucket
+                  - ec2:*
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: "Allow"
